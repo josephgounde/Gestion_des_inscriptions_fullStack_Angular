@@ -5,12 +5,14 @@ import { Observable, BehaviorSubject } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
-interface User {
+export interface AdminProfile {
   id: string;
+  userName: string;
   email: string;
-  firstName: string;
-  lastName: string;
-  roles: string[];
+  firstName?: string;
+  lastName?: string;
+  role: string;
+  roles?: string[];
   token?: string;
 }
 
@@ -32,7 +34,7 @@ interface RegisterRequest {
 })
 export class AuthService {
   private apiUrl = `${environment.apiUrl}`;
-  private currentUserSubject = new BehaviorSubject<User | null>(null);
+  private currentUserSubject = new BehaviorSubject<AdminProfile | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
 
   constructor(private http: HttpClient) {
@@ -49,12 +51,18 @@ export class AuthService {
     return this.http.post<any>(`${this.apiUrl}/auth/login`, credentials).pipe(
       tap(response => {
         if (response.token) {
-          const user: User = {
+          // Handle both 'role' (single) and 'roles' (array) from backend
+          const userRole = response.role || (response.roles && response.roles[0]) || '';
+          const userRoles = response.roles || (response.role ? [response.role] : []);
+          
+          const user: AdminProfile = {
             id: response.id,
+            userName: response.username || response.userName || credentials.username,
             email: response.email,
             firstName: response.firstName,
             lastName: response.lastName,
-            roles: response.roles || [],
+            role: userRole,
+            roles: userRoles,
             token: response.token
           };
           if (typeof window !== 'undefined') {
@@ -79,8 +87,20 @@ export class AuthService {
     this.currentUserSubject.next(null);
   }
 
-  getCurrentUser(): User | null {
+  getCurrentUser(): AdminProfile | null {
     return this.currentUserSubject.value;
+  }
+
+  // Update user profile after completion
+  updateCurrentUser(updates: Partial<AdminProfile>): void {
+    const currentUser = this.getCurrentUser();
+    if (currentUser) {
+      const updatedUser = { ...currentUser, ...updates };
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+      }
+      this.currentUserSubject.next(updatedUser);
+    }
   }
 
   isAuthenticated(): boolean {
@@ -94,18 +114,65 @@ export class AuthService {
     return null;
   }
 
+  // Check if user has SUPER_ADMIN role
+  isSuperAdmin(): boolean {
+    const user = this.getCurrentUser();
+    if (!user) return false;
+    
+    // Check both role (single) and roles (array)
+    const hasRoleInSingle = user.role === 'SUPER_ADMIN' || user.role === 'ROLE_SUPER_ADMIN';
+    const hasRoleInArray = user.roles?.some(r => 
+      r === 'SUPER_ADMIN' || r === 'ROLE_SUPER_ADMIN'
+    ) || false;
+    
+    return hasRoleInSingle || hasRoleInArray;
+  }
+
+  // Check if user is any type of admin
   isAdmin(): boolean {
     const user = this.getCurrentUser();
-    return !!(user?.roles?.includes('ROLE_SUPER_ADMIN') || user?.roles?.includes('ROLE_ADMIN'));
+    if (!user) return false;
+    
+    const adminRoles = ['SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN', 'AGENT', 'ROLE_AGENT'];
+    
+    const hasRoleInSingle = adminRoles.includes(user.role);
+    const hasRoleInArray = user.roles?.some(r => adminRoles.includes(r)) || false;
+    
+    return hasRoleInSingle || hasRoleInArray;
   }
 
-  isCandidate(): boolean {
-    const user = this.getCurrentUser();
-    return !!user?.roles?.includes('ROLE_CANDIDATE');
-  }
-
+  // Check if user is an agent
   isAgent(): boolean {
     const user = this.getCurrentUser();
-    return !!user?.roles?.includes('ROLE_AGENT');
+    if (!user) return false;
+    
+    const hasRoleInSingle = user.role === 'AGENT' || user.role === 'ROLE_AGENT';
+    const hasRoleInArray = user.roles?.some(r => 
+      r === 'AGENT' || r === 'ROLE_AGENT'
+    ) || false;
+    
+    return hasRoleInSingle || hasRoleInArray;
+  }
+
+  // Check if user is a candidate
+  isCandidate(): boolean {
+    const user = this.getCurrentUser();
+    if (!user) return false;
+    
+    const hasRoleInSingle = user.role === 'CANDIDATE' || user.role === 'ROLE_CANDIDATE';
+    const hasRoleInArray = user.roles?.some(r => 
+      r === 'CANDIDATE' || r === 'ROLE_CANDIDATE'
+    ) || false;
+    
+    return hasRoleInSingle || hasRoleInArray;
+  }
+
+  // Get user's primary role (without ROLE_ prefix)
+  getUserRole(): string {
+    const user = this.getCurrentUser();
+    if (!user) return '';
+    
+    const role = user.role || (user.roles && user.roles[0]) || '';
+    return role.replace('ROLE_', '');
   }
 }

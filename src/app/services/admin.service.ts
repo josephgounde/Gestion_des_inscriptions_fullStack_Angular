@@ -1,4 +1,3 @@
-
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -14,6 +13,7 @@ export interface AdministratorProfileDTO {
 }
 
 export interface AgentCreationDTO {
+  username: string;
   firstName: string;
   lastName: string;
   email: string;
