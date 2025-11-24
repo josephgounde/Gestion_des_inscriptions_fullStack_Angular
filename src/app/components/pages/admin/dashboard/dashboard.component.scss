@@ -1,0 +1,34 @@
+/* Admin dashboard - two-color theme */
+.dashboard-page {
+	background: var(--theme-grey);
+	color: var(--theme-dark-blue);
+	min-height: calc(100vh - 64px);
+	padding: 1.25rem;
+}
+
+.cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+	gap: 1rem;
+}
+
+.card {
+	background: #fff;
+	border-radius: 0.5rem;
+	padding: 1rem;
+	box-shadow: 0 6px 18px rgba(3, 105, 161, 0.06);
+	border-left: 6px solid var(--theme-dark-blue);
+}
+
+.card .title {
+	font-weight: 600;
+	color: var(--theme-dark-blue);
+	margin-bottom: 0.5rem;
+}
+
+.stat {
+	font-size: 1.6rem;
+	font-weight: 700;
+	color: var(--theme-dark-blue-600);
+}
+
