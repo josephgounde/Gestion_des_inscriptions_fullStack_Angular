@@ -18,6 +18,12 @@ export const routes: Routes = [
   {
     path: 'admin',
     loadChildren: () => import('./components/pages/admin/routes/routes.component').then(m => m.ADMIN_ROUTES)
+    // SuperAdminGuard is applied inside ADMIN_ROUTES to each route
+  },
+  {
+    path: 'agent',
+    loadChildren: () => import('./components/pages/agent/routes/routes.component').then(m => m.AGENT_ROUTES)
+    // AgentGuard is applied inside AGENT_ROUTES to each route
   },
   {
     path: '**',

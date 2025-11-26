@@ -1,9 +1,8 @@
 // src/app/pages/auth/login/login.component.ts
-
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../../services/auth.service';
 
 @Component({
@@ -59,6 +58,13 @@ import { AuthService } from '../../../../services/auth.service';
                 <p class="text-red-500 text-sm mt-1">Mot de passe requis</p>
               }
             </div>
+
+            <!-- Error Message -->
+            @if (errorMessage) {
+              <div class="p-4 bg-red-50 rounded-xl shadow-neo-inset">
+                <p class="text-sm text-red-800">{{ errorMessage }}</p>
+              </div>
+            }
 
             <!-- Remember & Forgot -->
             <div class="flex items-center justify-between">
@@ -131,10 +137,13 @@ export class LoginComponent {
   loginForm: FormGroup;
   showPassword = false;
   loading = false;
+  errorMessage = '';
+  returnUrl = '';
 
   constructor(
     private fb: FormBuilder,
     private router: Router,
+    private route: ActivatedRoute,
     private authService: AuthService
   ) {
     this.loginForm = this.fb.group({
@@ -142,35 +151,77 @@ export class LoginComponent {
       password: ['', [Validators.required, Validators.minLength(6)]],
       rememberMe: [false]
     });
+
+    // Get return URL from route parameters or default to home
+    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '';
   }
 
   onSubmit() {
     if (this.loginForm.valid) {
       this.loading = true;
+      this.errorMessage = '';
+
       const credentials = {
         username: this.loginForm.get('username')?.value,
         password: this.loginForm.get('password')?.value
       };
+
+      console.log('Attempting login...'); // Debug log
+
       this.authService.login(credentials).subscribe({
-        next: (res) => {
+        next: (response) => {
+          console.log('Login successful:', response); // Debug log
           this.loading = false;
-          console.log('Login response:', res); // DEBUG
-          const roles = res.roles || [];
-          if (roles.includes('ROLE_SUPER_ADMIN') || roles.includes('ROLE_ADMIN')) {
-            this.router.navigate(['/admin/dashboard']);
-          } else if (roles.includes('ROLE_CANDIDATE')) {
-            this.router.navigate(['/candidate/dashboard']);
-          } else if (roles.includes('ROLE_AGENT')) {
-            this.router.navigate(['/admin/applications']);
-          } else {
-            this.router.navigate(['/']);
-          }
+
+          // Route based on user role
+          this.routeUserBasedOnRole();
         },
-        error: (err) => {
+        error: (error) => {
+          console.error('Login error:', error); // Debug log
           this.loading = false;
-          // TODO: Show error to user (e.g., invalid credentials)
+
+          // Display user-friendly error message
+          if (error.status === 401) {
+            this.errorMessage = 'Invalid username or password. Please try again.';
+          } else if (error.status === 403) {
+            this.errorMessage = 'Your account has been suspended. Contact support.';
+          } else if (error.status === 0) {
+            this.errorMessage = 'Cannot connect to server. Please check your connection.';
+          } else {
+            this.errorMessage = error.error?.message || 'Login failed. Please try again.';
+          }
         }
       });
+    }
+  }
+
+  private routeUserBasedOnRole() {
+    // If there's a return URL, go there (unless it's for a different role)
+    if (this.returnUrl) {
+      if (this.authService.isSuperAdmin() && this.returnUrl.includes('/admin')) {
+        this.router.navigateByUrl(this.returnUrl);
+        return;
+      }
+      if (this.authService.isAgent() && this.returnUrl.includes('/agent')) {
+        this.router.navigateByUrl(this.returnUrl);
+        return;
+      }
+    }
+
+    // Route to appropriate dashboard based on role
+    if (this.authService.isSuperAdmin()) {
+      console.log('Routing to admin dashboard');
+      this.router.navigate(['/admin/dashboard']);
+    } else if (this.authService.isAgent()) {
+      console.log('Routing to agent dashboard');
+      this.router.navigate(['/agent/dashboard']);
+    } else if (this.authService.isCandidate()) {
+      console.log('Routing to candidate dashboard');
+      this.router.navigate(['/candidate/dashboard']);
+    } else {
+      // Fallback
+      console.log('Unknown role, routing to home');
+      this.router.navigate(['/']);
     }
   }
 }
