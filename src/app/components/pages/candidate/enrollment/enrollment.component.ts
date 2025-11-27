@@ -4,7 +4,8 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, FormArray, FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { CandidateService, UserProfileDTO } from '../../../../services/candidate.service';
-import { ApplicationService } from '../../../../services/application.service';  
+import { ApplicationService } from '../../../../services/application.service';
+import { AuthService } from '../../../../services/auth.service';
 
 interface Step {
   id: number;
@@ -980,7 +981,8 @@ export class EnrollmentFormComponent implements OnInit {
     private fb: FormBuilder,
     private router: Router,
     private candidateService: CandidateService,
-    private applicationService: ApplicationService  // ✅ ADDED
+    private applicationService: ApplicationService,
+    private authService: AuthService  // ✅ ADDED
   ) {
     this.personalInfoForm = this.fb.group({
       lastName: ['', [Validators.required, Validators.pattern(/^[a-zA-ZÀ-ÿ\s]+$/)]],
@@ -1213,9 +1215,45 @@ export class EnrollmentFormComponent implements OnInit {
   onFileSelect(event: any, fileType: string) {
     const file = event.target.files[0];
     if (file) {
+      console.log('📎 File selected:', {
+        name: file.name,
+        type: file.type,
+        size: file.size
+      });
+
+      // ✅ Validate file type FIRST
+      const allowedTypes = [
+        'application/pdf',
+        'image/jpeg',
+        'image/jpg',  // Some browsers report JPEG as jpg
+        'image/png'
+      ];
+      
+      const fileTypeLower = file.type.toLowerCase();
+      const isValidType = allowedTypes.includes(fileTypeLower);
+      
+      if (!isValidType) {
+        console.error('❌ Invalid file type:', file.type);
+        alert(
+          `Type de fichier non accepté: ${file.type}\n\n` +
+          `Types acceptés:\n` +
+          `• PDF (.pdf)\n` +
+          `• JPEG (.jpg, .jpeg)\n` +
+          `• PNG (.png)\n\n` +
+          `Veuillez convertir votre fichier ou sélectionner un autre format.`
+        );
+        event.target.value = ''; // Clear the input
+        return;
+      }
+      
+      console.log('✅ File type valid:', file.type);
+
+      // Check file size
       const maxSize = file.type.includes('pdf') ? 5 * 1024 * 1024 : 2 * 1024 * 1024;
       if (file.size > maxSize) {
-        alert('Fichier trop volumineux');
+        const maxSizeMB = maxSize / (1024 * 1024);
+        alert(`Fichier trop volumineux (${(file.size / (1024 * 1024)).toFixed(2)} MB).\n\nTaille maximale: ${maxSizeMB} MB`);
+        event.target.value = '';
         return;
       }
 
@@ -1224,7 +1262,7 @@ export class EnrollmentFormComponent implements OnInit {
         size: file.size,
         type: file.type,
         url: URL.createObjectURL(file),
-        file: file  // ✅ ADDED: Store actual File object
+        file: file
       };
 
       if (file.type.startsWith('image/')) {
@@ -1232,10 +1270,12 @@ export class EnrollmentFormComponent implements OnInit {
         reader.onload = (e: any) => {
           uploadedFile.preview = e.target.result;
           this.documents[fileType] = uploadedFile;
+          console.log(`✅ ${fileType} uploaded successfully`);
         };
         reader.readAsDataURL(file);
       } else {
         this.documents[fileType] = uploadedFile;
+        console.log(`✅ ${fileType} uploaded successfully`);
       }
     }
   }

@@ -1,6 +1,7 @@
 // src/app/services/application.service.ts
+// SIMPLIFIED VERSION - Relies on auth interceptor to add token
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
@@ -21,8 +22,7 @@ export class ApplicationService {
    * POST /api/applications/submit
    * Requires: ROLE_CANDIDATE
    * 
-   * This creates an application from the current user's profile
-   * and uploads the provided documents
+   * Relies on auth interceptor to add Authorization header
    */
   submitApplication(
     documents: { name: string; type: string; file: File }[]
@@ -31,23 +31,20 @@ export class ApplicationService {
 
     // Add documents to FormData
     if (documents && documents.length > 0) {
-      documents.forEach((doc, index) => {
-        // Add the file
+      documents.forEach((doc) => {
         formData.append('files', doc.file);
-        
-        // Add document metadata
         formData.append('documentNames', doc.name);
         formData.append('documentTypes', doc.type);
       });
     }
 
-    console.log('Submitting application with', documents.length, 'documents');
+    console.log('📤 Submitting application with', documents.length, 'documents');
+    console.log('🔐 Relying on auth interceptor to add token');
 
-    // Send multipart/form-data request
+    // Let interceptor add Authorization header automatically
     return this.http.post(
       `${this.apiUrl}/applications/submit`,
       formData
-      // Note: Don't set Content-Type header - browser will set it automatically with boundary
     );
   }
 
