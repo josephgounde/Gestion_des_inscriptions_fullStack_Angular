@@ -1,25 +1,28 @@
 package com.groupe.gestin_inscription.services.serviceImpl;
 
 
-import com.groupe.gestin_inscription.dto.request.AcademicHistoryRequestDTO;
-import com.groupe.gestin_inscription.dto.request.UserRequestDTO;
-import com.groupe.gestin_inscription.dto.response.UserResponseDTO;
-import com.groupe.gestin_inscription.model.*;
-import com.groupe.gestin_inscription.model.Enums.Gender;
-import com.groupe.gestin_inscription.model.Enums.UserRole;
-import com.groupe.gestin_inscription.repository.*;
-import com.groupe.gestin_inscription.services.serviceInterfaces.*;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.groupe.gestin_inscription.dto.request.AcademicHistoryRequestDTO;
+import com.groupe.gestin_inscription.dto.request.UserRequestDTO;
+import com.groupe.gestin_inscription.dto.response.UserResponseDTO;
+import com.groupe.gestin_inscription.model.AcademicHistory;
+import com.groupe.gestin_inscription.model.Enums.Gender;
+import com.groupe.gestin_inscription.model.Enums.UserRole;
+import com.groupe.gestin_inscription.model.User;
+import com.groupe.gestin_inscription.repository.AcademicHistoryRepository;
+import com.groupe.gestin_inscription.repository.UserRepository;
+import com.groupe.gestin_inscription.services.serviceInterfaces.UserService;
+
+import lombok.RequiredArgsConstructor;
 
 
 @Service
@@ -60,7 +63,7 @@ public class UserServiceImpl implements UserService {
     public Optional<UserResponseDTO> findById(Long id) {
         Optional<User> userOptional = userRepository.findById(id);
         if (userOptional.isPresent()) {
-            return userOptional.map(this::mapToResponse);
+            return userOptional.map(this::mapToUserResponseDTO); 
         } else {
             throw new NoSuchElementException("User not found with id: " + id);
         }
@@ -71,7 +74,7 @@ public class UserServiceImpl implements UserService {
     public Optional<UserResponseDTO> findByUsername(String username) {
         Optional<User> userOptional = userRepository.findByUsername(username);
         if (userOptional.isPresent()) {
-            return userOptional.map(this::mapToResponse);
+            return userOptional.map(this::mapToUserResponseDTO); 
         } else {
             throw new NoSuchElementException("No User found with Username: " + username);
         }
@@ -82,7 +85,7 @@ public class UserServiceImpl implements UserService {
     public Optional<UserResponseDTO> findByEmail(String email) {
         Optional<User> userOptional = userRepository.findByEmail(email);
         if (userOptional.isPresent()) {
-            return userOptional.map(this::mapToResponse);
+            return userOptional.map(this::mapToUserResponseDTO); 
         } else {
             throw new NoSuchElementException("No User found with the Email: " + email);
         }
@@ -92,7 +95,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public List<UserResponseDTO> getAllUsers() {
         return userRepository.findAll().stream()
-                .map(this::mapToResponse)
+                .map(this::mapToUserResponseDTO) 
                 .collect(Collectors.toList());
     }
 
@@ -124,9 +127,25 @@ public class UserServiceImpl implements UserService {
         if (request.getLastName() != null) {
             concernedUser.setLastName(request.getLastName());
         }
+        //Update additional fields if provided
+        if (request.getGender() != null) {
+            concernedUser.setGender(Gender.valueOf(request.getGender().toUpperCase()));
+        }
+        if (request.getDateOfBirth() != null) {
+            concernedUser.setDateOfBirth(LocalDate.parse(request.getDateOfBirth()));
+        }
+        if (request.getNationality() != null) {
+            concernedUser.setNationality(request.getNationality());
+        }
+        if (request.getPhoneNumber() != null) {
+            concernedUser.setPhoneNumber(request.getPhoneNumber());
+        }
+        if (request.getAddress() != null) {
+            concernedUser.setAddress(request.getAddress());
+        }
 
         User updatedUser = userRepository.save(concernedUser);
-        return mapToResponse(updatedUser);
+        return mapToUserResponseDTO(updatedUser);
     }
 
     @Transactional
@@ -138,18 +157,6 @@ public class UserServiceImpl implements UserService {
         userRepository.deleteById(id);
     }
 
-    // Helper method for mapping
-    private UserResponseDTO mapToResponse(User user) {
-        return new UserResponseDTO(
-                user.getId(),
-                user.getUsername(),
-                user.getFirstName(),
-                user.getLastName(),
-                user.getEmail(),
-                user.getRole()
-        );
-    }
-
     /**
      * Helper method to map a UserRequestDTO to a User entity.
      */
@@ -158,7 +165,7 @@ public class UserServiceImpl implements UserService {
             return null;
         }
         User user = new User();
-        user.setUsername(dto.getUsername()); // Add this line
+        user.setUsername(dto.getUsername()); 
         user.setFirstName(dto.getFirstName());
         user.setLastName(dto.getLastName());
         if (dto.getGender() != null) {
@@ -196,6 +203,7 @@ public class UserServiceImpl implements UserService {
 
     /**
      * Helper method to map a User entity to a UserResponseDTO.
+     * uses the @AllArgsConstructor or setters to create and populate the DTO.
      */
     private UserResponseDTO mapToUserResponseDTO(User user) {
         if (user == null) {
@@ -203,12 +211,16 @@ public class UserServiceImpl implements UserService {
         }
         UserResponseDTO dto = new UserResponseDTO();
         dto.setId(user.getId());
-        dto.setUsername(user.getUsername()); // Add this line
+        dto.setUsername(user.getUsername());
         dto.setFirstName(user.getFirstName());
         dto.setLastName(user.getLastName());
+        dto.setGender(user.getGender() != null ? user.getGender().name() : null);
+        dto.setDateOfBirth(user.getDateOfBirth() != null ? user.getDateOfBirth().toString() : null);
+        dto.setNationality(user.getNationality());
         dto.setEmail(user.getEmail());
         dto.setPhoneNumber(user.getPhoneNumber());
         dto.setAddress(user.getAddress());
+        dto.setRole(user.getRole()); 
         return dto;
     }
 }
