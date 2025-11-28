@@ -1,9 +1,9 @@
 // src/app/services/application.service.ts
-// SIMPLIFIED VERSION - Relies on auth interceptor to add token
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { AuthService } from './auth.service';  // ✅ ADDED
 
 /**
  * Application Service
@@ -15,14 +15,18 @@ import { environment } from '../../environments/environment';
 export class ApplicationService {
   private apiUrl = environment.apiUrl;
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private authService: AuthService  // ✅ ADDED
+  ) {}
 
   /**
    * Submit enrollment application with documents
    * POST /api/applications/submit
    * Requires: ROLE_CANDIDATE
    * 
-   * Relies on auth interceptor to add Authorization header
+   * This creates an application from the current user's profile
+   * and uploads the provided documents
    */
   submitApplication(
     documents: { name: string; type: string; file: File }[]
@@ -31,20 +35,42 @@ export class ApplicationService {
 
     // Add documents to FormData
     if (documents && documents.length > 0) {
-      documents.forEach((doc) => {
+      documents.forEach((doc, index) => {
+        // Add the file
         formData.append('files', doc.file);
+        
+        // Add document metadata
         formData.append('documentNames', doc.name);
         formData.append('documentTypes', doc.type);
       });
     }
 
-    console.log('📤 Submitting application with', documents.length, 'documents');
-    console.log('🔐 Relying on auth interceptor to add token');
+    console.log('Submitting application with', documents.length, 'documents');
 
-    // Let interceptor add Authorization header automatically
+    // Get authentication token from AuthService
+    const token = this.authService.getToken();
+    
+    console.log('🔍 Token check:', token ? 'Token exists' : 'No token');
+    
+    if (!token) {
+      console.error('❌ No authentication token found');
+      console.log('Checking localStorage directly:', localStorage.getItem('token'));
+      throw new Error('No authentication token found. Please login again.');
+    }
+
+    console.log('✅ Token found, adding to headers');
+
+    // Create headers with Authorization
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+    });
+    // Note: Don't set Content-Type - browser will set it automatically with boundary for multipart/form-data
+
+    // Send multipart/form-data request with auth header
     return this.http.post(
       `${this.apiUrl}/applications/submit`,
-      formData
+      formData,
+      { headers }  // Add Authorization header
     );
   }
 

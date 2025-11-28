@@ -1,34 +1,45 @@
 package com.groupe.gestin_inscription.controller;
 
-import com.groupe.gestin_inscription.dto.request.DocumentUploadRequestDTO;
-import com.groupe.gestin_inscription.dto.response.DocumentResponseDTO;
-import com.groupe.gestin_inscription.dto.request.RegistrationFormRequestDTO;
-import com.groupe.gestin_inscription.dto.response.ApplicationStatusResponseDto;
-import com.groupe.gestin_inscription.dto.response.NotificationResponseDTO;
-import com.groupe.gestin_inscription.model.*;
-import com.groupe.gestin_inscription.model.Enums.ApplicationStatus;
-import com.groupe.gestin_inscription.repository.DocumentRepository;
-import com.groupe.gestin_inscription.repository.NotificationRepository;
-import com.groupe.gestin_inscription.security.Utils.ObjectLevelSecurity;
-import com.groupe.gestin_inscription.services.serviceImpl.ApplicationServiceImpl;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.mail.MessagingException;
-import jakarta.persistence.EntityNotFoundException;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
+import com.groupe.gestin_inscription.dto.request.DocumentUploadRequestDTO;
+import com.groupe.gestin_inscription.dto.response.ApplicationStatusResponseDto;
+import com.groupe.gestin_inscription.dto.response.DocumentResponseDTO;
+import com.groupe.gestin_inscription.dto.response.NotificationResponseDTO;
+import com.groupe.gestin_inscription.model.AcademicHistory;
+import com.groupe.gestin_inscription.model.Administrator;
+import com.groupe.gestin_inscription.model.Application;
+import com.groupe.gestin_inscription.model.Document;
+import com.groupe.gestin_inscription.model.Enums.ApplicationStatus;
+import com.groupe.gestin_inscription.model.Notification;
+import com.groupe.gestin_inscription.model.User;
+import com.groupe.gestin_inscription.repository.DocumentRepository;
+import com.groupe.gestin_inscription.repository.NotificationRepository;
+import com.groupe.gestin_inscription.security.Utils.ObjectLevelSecurity;
+import com.groupe.gestin_inscription.services.serviceImpl.ApplicationServiceImpl;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.mail.MessagingException;
+import jakarta.persistence.EntityNotFoundException;
 
 @RestController
 @RequestMapping("/api/applications")
@@ -170,6 +181,8 @@ public class ApplicationController {
         return ResponseEntity.ok(applications.stream().map(this::convertToDto).collect(Collectors.toList()));
     }
 
+   
+
     // Private helper method to convert a single Application entity to a DTO
     private ApplicationStatusResponseDto convertToDto(Application application) {
         ApplicationStatusResponseDto dto = new ApplicationStatusResponseDto();
@@ -179,12 +192,10 @@ public class ApplicationController {
         dto.setSubmissionDate(application.getSubmissionDate());
 
         Administrator assignedAdmin = application.getAssignedAdmin();
-        // Conditional assignment to prevent NullPointerException if no agent is assigned yet
         if (assignedAdmin != null) {
             dto.setAssignedAdminId(assignedAdmin.getId());
             dto.setAssignedAdminUsername(assignedAdmin.getUserName());
         } else {
-            // Explicitly set to null or a default value
             dto.setAssignedAdminId(null);
             dto.setAssignedAdminUsername("Not assigned");
         }
@@ -194,6 +205,26 @@ public class ApplicationController {
         if (applicant != null) {
             dto.setUsername(applicant.getUsername());
             dto.setApplicantName(applicant.getFirstName() + " " + applicant.getLastName());
+            
+            // ✅ ADD FIELDS THAT EXIST IN USER ENTITY:
+            dto.setPhoneNumber(applicant.getPhoneNumber());
+            dto.setGender(applicant.getGender() != null ? applicant.getGender().name() : null);
+            dto.setBirthDate(applicant.getDateOfBirth() != null ? applicant.getDateOfBirth().toString() : null);  // Note: dateOfBirth, not birthDate
+            dto.setNationality(applicant.getNationality());
+            dto.setEmail(applicant.getEmail());
+            dto.setAddress(applicant.getAddress());
+            
+            // ✅ EMERGENCY CONTACT (single string field)
+            dto.setEmergencyContact(applicant.getEmergencyContact());
+            
+            // ✅ ACADEMIC INFORMATION (from AcademicHistory relationship)
+            AcademicHistory academicHistory = applicant.getAcademicHistory();
+            if (academicHistory != null) {
+                dto.setLastInstitution(academicHistory.getLastInstitution());
+                dto.setSpecialization(academicHistory.getSpecialization());
+                dto.setAcademicStartDate(academicHistory.getStartDate() != null ? academicHistory.getStartDate().toString() : null);
+                dto.setAcademicEndDate(academicHistory.getEndDate() != null ? academicHistory.getEndDate().toString() : null);
+            }
         }
 
        // Populate documentsStatus

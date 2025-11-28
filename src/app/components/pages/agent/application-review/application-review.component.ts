@@ -398,21 +398,37 @@ export class ApplicationReviewComponent implements OnInit {
     return this.application.documents.filter(doc => doc.validationStatus === status).length;
   }
 
-  validateDocument(documentId: string, isApproved: boolean) {
-    const comment = isApproved ? 'Document approved by agent' : 'Document rejected by agent';
-    
-    this.adminService.validateDocument(documentId, isApproved, comment).subscribe({
+
+validateDocument(documentId: string, isApproved: boolean) {
+  if (isApproved) {
+    // Call validate endpoint
+    this.adminService.validateDocument(documentId).subscribe({
       next: () => {
-        // Reload application to get updated document statuses
         this.loadApplication();
-        console.log(`Document ${isApproved ? 'approved' : 'rejected'}`);
+        console.log('Document approved');
+        alert('Document validé avec succès');
       },
       error: (error) => {
         console.error('Failed to validate document:', error);
-        alert('Failed to validate document. Please try again.');
+        alert('Erreur lors de la validation du document');
+      }
+    });
+  } else {
+    // Call reject endpoint
+    const reason = prompt('Raison du rejet (optionnel):') || 'Document rejected by agent';
+    this.adminService.rejectDocument(documentId, reason).subscribe({
+      next: () => {
+        this.loadApplication();
+        console.log('Document rejected');
+        alert('Document rejeté');
+      },
+      error: (error) => {
+        console.error('Failed to reject document:', error);
+        alert('Erreur lors du rejet du document');
       }
     });
   }
+}
 
   addComment() {
     if (this.commentForm.valid && !this.isSubmittingComment) {

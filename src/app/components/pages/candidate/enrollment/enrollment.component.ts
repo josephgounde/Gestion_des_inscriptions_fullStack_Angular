@@ -5,7 +5,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, FormArray, For
 import { Router, RouterLink } from '@angular/router';
 import { CandidateService, UserProfileDTO } from '../../../../services/candidate.service';
 import { ApplicationService } from '../../../../services/application.service';
-import { AuthService } from '../../../../services/auth.service';
+import { AuthService } from '../../../../services/auth.service';  
 
 interface Step {
   id: number;

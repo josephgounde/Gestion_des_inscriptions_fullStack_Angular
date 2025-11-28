@@ -1,17 +1,7 @@
 package com.groupe.gestin_inscription.services.serviceImpl;
 
-import boofcv.alg.filter.blur.BlurImageOps;
-import boofcv.struct.ConfigLength;
-import boofcv.struct.image.GrayF32;
-import com.groupe.gestin_inscription.repository.DocumentRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.opencv.core.Mat;
-import org.opencv.core.MatOfRect;
-import org.opencv.imgcodecs.Imgcodecs;
-import org.opencv.objdetect.CascadeClassifier;
-import org.springframework.web.multipart.MultipartFile;
-
+import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.math.BigInteger;
@@ -21,17 +11,29 @@ import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.UUID;
-import org.springframework.stereotype.Service;
-import java.io.File;
-import net.sourceforge.tess4j.Tesseract;
-import net.sourceforge.tess4j.TesseractException;
-import boofcv.io.image.ConvertBufferedImage;
-import boofcv.io.image.UtilImageIO;
-import boofcv.alg.filter.binary.GThresholdImageOps;
-import boofcv.struct.image.GrayU8;
 
 import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
+
+import org.opencv.core.Mat;
+import org.opencv.core.MatOfRect;
+import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.objdetect.CascadeClassifier;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.groupe.gestin_inscription.repository.DocumentRepository;
+
+import boofcv.alg.filter.binary.GThresholdImageOps;
+import boofcv.alg.filter.blur.BlurImageOps;
+import boofcv.io.image.ConvertBufferedImage;
+import boofcv.io.image.UtilImageIO;
+import boofcv.struct.ConfigLength;
+import boofcv.struct.image.GrayF32;
+import boofcv.struct.image.GrayU8;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import net.sourceforge.tess4j.Tesseract;
+import net.sourceforge.tess4j.TesseractException;
 
 @Slf4j
 @Service
