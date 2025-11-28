@@ -895,7 +895,7 @@ export class AdminDashboardComponent implements OnInit {
       next: (res: any) => {
         const apps = res?.content ? res.content : (Array.isArray(res) ? res : res?.applications ?? []);
         this.applications = apps.map((a: any) => ({
-          id: a.id,
+          id: a.applicationId || a.id,
           candidateName: a.candidateName || (a.candidate?.firstName && a.candidate?.lastName ? `${a.candidate.firstName} ${a.candidate.lastName}` : ''),
           email: a.email || a.candidate?.email || '',
           program: a.program || a.desiredProgram || '',

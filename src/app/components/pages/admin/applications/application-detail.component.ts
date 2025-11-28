@@ -376,10 +376,24 @@ export class ApplicationDetailComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.applicationId = this.route.snapshot.params['id'];
-    this.loadApplication();
-    this.loadAgents();
+  // Get application ID from route
+  this.applicationId = this.route.snapshot.params['id'];
+  
+  // ✅ DEBUG LOGGING
+  console.log('🔍 Route params:', this.route.snapshot.params);
+  console.log('🔍 Application ID from route:', this.applicationId);
+  
+  // ✅ VALIDATION
+  if (!this.applicationId) {
+    console.error('❌ No application ID in route!');
+    console.log('🔍 Current URL:', window.location.href);
+    alert('Erreur: ID de candidature manquant dans l\'URL');
+    return;
   }
+  
+  this.loadApplication();
+  this.loadAgents();
+}
 
   loadApplication() {
   console.log('📥 Loading application:', this.applicationId);
@@ -630,32 +644,46 @@ export class ApplicationDetailComponent implements OnInit {
   // ========== AGENT ASSIGNMENT ==========
 
   assignToAgent() {
-    if (!this.selectedAgentId) {
-      alert('Veuillez sélectionner un agent');
-      return;
-    }
-    
-    if (!confirm('Assigner cette candidature à l\'agent sélectionné ?')) {
-      return;
-    }
-    
-    this.isAssigning = true;
-    console.log('👤 Assigning to agent:', this.selectedAgentId);
-    
-    this.adminService.assignApplication(this.applicationId, this.selectedAgentId).subscribe({
-      next: () => {
-        console.log('✅ Application assigned');
-        alert('Candidature assignée avec succès');
-        this.isAssigning = false;
-        this.loadApplication();
-      },
-      error: (err) => {
-        console.error('❌ Assignment failed:', err);
-        alert('Erreur lors de l\'assignation');
-        this.isAssigning = false;
-      }
-    });
+  // Check if applicationId exists
+  if (!this.applicationId) {
+    console.error('❌ Cannot assign: applicationId is undefined!');
+    alert('Erreur: ID de candidature non défini');
+    return;
   }
+  
+  if (!this.selectedAgentId) {
+    alert('Veuillez sélectionner un agent');
+    return;
+  }
+  
+  if (!confirm('Assigner cette candidature à l\'agent sélectionné ?')) {
+    return;
+  }
+  
+  this.isAssigning = true;
+  console.log('👤 Assigning application:', this.applicationId, 'to agent:', this.selectedAgentId);
+  
+  // CONVERT TO STRING (backend expects Long but URL param is string)
+  this.adminService.assignApplication(this.applicationId, this.selectedAgentId).subscribe({
+    next: () => {
+      console.log('✅ Application assigned');
+      alert('Candidature assignée avec succès');
+      this.isAssigning = false;
+      this.loadApplication();
+    },
+    error: (err) => {
+      console.error('❌ Assignment failed:', err);
+      if (err.status === 401) {
+        alert('Erreur d\'authentification. Veuillez vous reconnecter.');
+      } else if (err.status === 404) {
+        alert('Application ou agent non trouvé.');
+      } else {
+        alert('Erreur lors de l\'assignation');
+      }
+      this.isAssigning = false;
+    }
+  });
+}
 
   // ========== COMMENTS ==========
 

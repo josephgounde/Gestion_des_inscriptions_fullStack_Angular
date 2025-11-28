@@ -3,6 +3,7 @@ package com.groupe.gestin_inscription.controller;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -31,6 +33,8 @@ import com.groupe.gestin_inscription.model.Document;
 import com.groupe.gestin_inscription.model.Enums.ApplicationStatus;
 import com.groupe.gestin_inscription.model.Notification;
 import com.groupe.gestin_inscription.model.User;
+import com.groupe.gestin_inscription.repository.AdministratorRepository;
+import com.groupe.gestin_inscription.repository.ApplicationRepository;
 import com.groupe.gestin_inscription.repository.DocumentRepository;
 import com.groupe.gestin_inscription.repository.NotificationRepository;
 import com.groupe.gestin_inscription.security.Utils.ObjectLevelSecurity;
@@ -54,6 +58,10 @@ public class ApplicationController {
     private DocumentRepository documentRepository;
     @Autowired
     private NotificationRepository notificationRepository;
+    @Autowired
+    private AdministratorRepository administratorRepository;
+    @Autowired
+    private ApplicationRepository applicationRepository;
 
     // Endpoint for applicants to submit a new application using their existing profile
     @Operation(summary = "Submit a new application using existing user profile")
@@ -126,6 +134,46 @@ public class ApplicationController {
 
         return ResponseEntity.ok(responseDtos);
     }
+
+    /**
+ * Assign an application to an agent
+ * Endpoint: POST /api/applications/{applicationId}/assign
+ */
+@Operation(summary = "Assign an application to an agent")
+@PostMapping("/{applicationId}/assign")
+@PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('AGENT')")
+public ResponseEntity<ApplicationStatusResponseDto> assignApplicationToAgent(
+        @PathVariable Long applicationId,
+        @RequestBody Map<String, Long> assignmentRequest) {
+    
+    Long agentId = assignmentRequest.get("agentId");
+    
+    if (agentId == null) {
+        return ResponseEntity.badRequest().build();
+    }
+    
+    // Get the application
+    Application application = applicationServiceImpl.getApplicationById(applicationId);
+    if (application == null) {
+        return ResponseEntity.notFound().build();
+    }
+    
+    // Get the agent
+    Administrator agent = administratorRepository.findById(agentId)
+            .orElse(null);
+    if (agent == null) {
+        return ResponseEntity.notFound().build();
+    }
+    
+    // Assign the agent to the application
+    application.setAssignedAdmin(agent);
+    
+    // ✅ FIX: Use applicationRepository.save() instead of updateApplication()
+    applicationRepository.save(application);
+    
+    // Return the updated application
+    return ResponseEntity.ok(convertToDto(application));
+}
 
 
     // Endpoint for an agent to manually review an application
